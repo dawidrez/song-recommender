@@ -51,7 +51,7 @@ def process_audio(path: str):
 
 
 def create_index():
-    embedding_array = np.load("embeddings_spectrograms.npy")
+    embedding_array = np.load("AI/embeddings_spectrograms.npy")
     index = faiss.IndexFlatL2(embedding_array.shape[1])
     index.add(embedding_array)
     faiss.write_index(index, "index.bin")
