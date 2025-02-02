@@ -2,3 +2,5 @@
 __pycache__
 .idea
 media
+db.sqlite3
+static

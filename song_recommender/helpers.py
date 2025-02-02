@@ -1,4 +1,3 @@
-from calendar import c
 from django.conf import settings
 import librosa
 import numpy as np
@@ -17,6 +16,7 @@ class TrackInfo(NamedTuple):
    audio_type: str
 
 def create_spectrogram(path: str) -> np.array:
+   """Use librosa to extract spectrogram from audio file"""
    y, sr = librosa.load(path, sr=44100)
    spec = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=128, fmax=8000)
    spec_dB = librosa.power_to_db(spec, ref=np.max)
@@ -27,7 +27,7 @@ def create_spectrogram(path: str) -> np.array:
    return spec_normalized
 
 
-def visualize_spectrogram(spectrogram: np.array, title="Spectrogram"):
+def visualize_spectrogram(spectrogram: np.array, title="Spectrogram") -> str:
    plt.figure(figsize=(10, 6))
    plt.imshow(spectrogram, aspect='auto', origin='lower', cmap='viridis')
    plt.colorbar(format='%+2.0f dB')
@@ -37,31 +37,26 @@ def visualize_spectrogram(spectrogram: np.array, title="Spectrogram"):
    spectrograms_dir = os.path.join(settings.MEDIA_ROOT, 'spectrograms')
    updated_title = title.split(".")[:-1]
    updated_title = "".join(updated_title)
-   spectrograms_url = f"{settings.MEDIA_URL}/spectrograms/{updated_title}.png"
-   plt.savefig(spectrograms_dir + f"/{updated_title}.png")
+   spectrograms_url = f"{spectrograms_dir}/{updated_title}.png"
+   plt.savefig(spectrograms_url)
    plt.close()
-   return spectrograms_url
+   return f"{settings.MEDIA_URL}/spectrograms/{updated_title}.png"
 
 
-def process_audio(path: str):
+def process_audio(path: str)-> tuple[list[TrackInfo],str]:
    spec = create_spectrogram(path)
-   spectrogram_url = visualize_spectrogram(spec, path.split("/")[-1])
+   filename = os.path.basename(path)
+   spectrogram_url = visualize_spectrogram(spec, filename)
    similar_songs = get_similar_songs(spec)
    return similar_songs, spectrogram_url
 
 
-def create_index():
-    embedding_array = np.load("AI/embeddings_spectrograms.npy")
-    index = faiss.IndexFlatL2(embedding_array.shape[1])
-    index.add(embedding_array)
-    faiss.write_index(index, "index.bin")
-
 def load_index():
-    index = faiss.read_index("song_recommender/index.bin")
+    index = faiss.read_index("song_recommender/AI/index.bin")
     return index
 
 def get_encoder():
-    encoder = tf.keras.models.load_model("song_recommender/encoder_model.h5")
+    encoder = tf.keras.models.load_model("song_recommender/AI/encoder_model8.h5")
     return encoder
 
 def get_embedding(spectrogram):
@@ -75,10 +70,11 @@ def get_similar_songs(spectrogram):
     embedding = get_embedding(spectrogram)
     index = load_index()
     _, indices = index.search(embedding.reshape(1, -1), 5)
+    indices = indices[0]
     tracks = os.listdir(os.path.join(settings.BASE_DIR, 'static/music'))
     sorted_tracks = sorted(tracks)
     similar_songs = []
-    for i, index in enumerate(indices[0]):
+    for index in indices:
         track_name = sorted_tracks[index]
         base_name = os.path.splitext(track_name)[0]
         similar_songs.append(TrackInfo(
@@ -91,3 +87,39 @@ def get_similar_songs(spectrogram):
     print(similar_songs)
     return similar_songs
 
+
+def create_index():
+    embedding_array = np.load("AI/embeddings_spectrograms.npy")
+    index = faiss.IndexFlatL2(embedding_array.shape[1])
+    index.add(embedding_array)
+    faiss.write_index(index, "AI/index.bin")
+
+def read_spectrogram(filepath: str) -> np.array:
+    spectrogram = np.load(filepath)
+
+    spectrogram = np.expand_dims(spectrogram, axis=-1)
+    return spectrogram
+
+def read_spectrogram_image(filepath: str) -> np.array:
+    spectrogram = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
+    spectrogram = cv2.resize(spectrogram, (256, 256), interpolation=cv2.INTER_AREA)
+    spectrogram = spectrogram / 255.0
+    spectrogram = np.expand_dims(spectrogram, axis=-1)
+    print(spectrogram.shape)
+    return spectrogram
+
+
+#encoder = tf.keras.models.load_model('AI/encoder_model8.h5')
+#spectrograms = []
+#tracks = os.listdir("../static/spectrograms")
+#sorted_tracks = sorted(tracks)
+#for track in sorted_tracks:
+#    file_path = os.path.join("../static/spectrograms", track)
+#    spectrograms.append(read_spectrogram(file_path))
+#
+#combined_array = np.stack(spectrograms, axis=0)
+#embedding_spectograms = encoder.predict(combined_array)
+#
+#np.save("AI/embeddings_spectrograms.npy", embedding_spectograms)
+
+#create_index()
