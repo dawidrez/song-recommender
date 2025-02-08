@@ -4,6 +4,7 @@ Song Recommender is a **full-stack Django application** that recommends similar 
 
 ## 🛠 How It Works  
 
+![App scheme](images/app_scheme.png)
 1. The **user uploads** an audio file (`.wav`, `.mp3`).  
 2. Using the **Librosa** library, a **spectrogram** is generated from the audio.  
 3. The **encoder** creates an **embedding** from the spectrogram.  
@@ -11,6 +12,7 @@ Song Recommender is a **full-stack Django application** that recommends similar 
 5. Based on similarity, the app **recommends** songs.  
 
 📌 **Model Training**  
+![Auto encoder traning](images/autoencoder_training_scheme.png)
 - The **encoder** is trained using **TensorFlow**.  
 - **Input:** Spectrogram (NumPy array).  
 - **Output:** Embedding, which is then passed to the **decoder**.  
@@ -36,7 +38,7 @@ python manage.py runserver
 - Open `http://localhost:5000/upload` in your browser.  
 
 ## 🖼️ Application Screenshot  
-(Screenshot goes here)  
+![Application screenshot](images/app_screenshot.png)
 
 ## 🏗️ Technologies Used  
 - **Librosa** – Creating spectrograms  
